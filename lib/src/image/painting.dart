@@ -2,7 +2,9 @@
 
 import 'dart:math';
 import 'dart:ui' as ui show Image;
+
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 void paintExtendedImage(
@@ -199,6 +201,7 @@ void paintExtendedImage(
     if (repeat == ImageRepeat.noRepeat) {
       canvas.drawImageRect(image, sourceRect, destinationRect, paint);
     } else {
+      // This has been removed in new flutter version
       final ImageTilingInfo info =
           createTilingInfo(repeat, rect, destinationRect, sourceRect);
       final ImageShader shader = ImageShader(
@@ -260,3 +263,53 @@ List<Rect> _generateImageTileRects(
 
 Rect _scaleRect(Rect rect, double scale) => Rect.fromLTRB(rect.left * scale,
     rect.top * scale, rect.right * scale, rect.bottom * scale);
+
+class ImageTilingInfo {
+  /// Create a new [ImageTilingInfo] object.
+  const ImageTilingInfo({
+    required this.tmx,
+    required this.tmy,
+    required this.transform,
+  });
+
+  /// The tile mode for the x-axis.
+  final TileMode tmx;
+
+  /// The tile mode for the y-axis.
+  final TileMode tmy;
+
+  /// The transform to apply to the image shader.
+  final Matrix4 transform;
+
+  @override
+  String toString() {
+    if (!kDebugMode) {
+      return 'ImageTilingInfo';
+    }
+    return 'ImageTilingInfo($tmx, $tmy, $transform)';
+  }
+}
+
+ImageTilingInfo createTilingInfo(
+    ImageRepeat repeat, Rect rect, Rect destinationRect, Rect sourceRect) {
+  assert(repeat != ImageRepeat.noRepeat);
+  final TileMode tmx =
+      (repeat == ImageRepeat.repeatX || repeat == ImageRepeat.repeat)
+          ? TileMode.repeated
+          : TileMode.decal;
+  final TileMode tmy =
+      (repeat == ImageRepeat.repeatY || repeat == ImageRepeat.repeat)
+          ? TileMode.repeated
+          : TileMode.decal;
+  final Rect data =
+      _generateImageTileRects(rect, destinationRect, repeat).first;
+  final Matrix4 transform = Matrix4.identity()
+    ..scale(data.width / sourceRect.width, data.height / sourceRect.height)
+    ..setTranslationRaw(data.topLeft.dx, data.topLeft.dy, 0);
+
+  return ImageTilingInfo(
+    tmx: tmx,
+    tmy: tmy,
+    transform: transform,
+  );
+}
